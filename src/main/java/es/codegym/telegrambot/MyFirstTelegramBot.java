@@ -60,7 +60,8 @@ public class MyFirstTelegramBot extends MultiSessionTelegramBot {
             userStates.put(chatId, ConversationState.AWAITING_INITIAL_QUESTION);
             sendTextMessageAsync(chatId, "Gracias por compartir tu número de teléfono: " + phoneNumber);
 
-            //sendTextMessageAsync("Gracias por compartir tu número de teléfono: " + phoneNumber);
+            // sendTextMessageAsync("Gracias por compartir tu número de teléfono: " +
+            // phoneNumber);
             removeKeyboard(chatId);
             return;
         }
@@ -74,7 +75,8 @@ public class MyFirstTelegramBot extends MultiSessionTelegramBot {
                 if (userName == null || userName.isEmpty()) {
                     userName = update.getMessage().getFrom().getFirstName();
                 }
-                String responseMessage = "¡Hola " + userName + "! Para comenzar, por favor déjame saber tu número de teléfono:";
+                String responseMessage = "¡Hola " + userName
+                        + "! Para comenzar, por favor déjame saber tu número de teléfono:";
                 requestPhoneNumber(chatId, responseMessage);
             }
         } else {
@@ -113,14 +115,13 @@ public class MyFirstTelegramBot extends MultiSessionTelegramBot {
     private ApiResponse callApi(String phoneNumber, String question) throws Exception {
         String jsonBody = objectMapper.writeValueAsString(Map.of(
                 "cel", phoneNumber,
-                "question", question
-        ));
+                "question", question));
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:9999/api/graph/"))
                 .header("Content-Type", "application/json")
                 .header("accept", "application/json")
-                .header("Authorization", "Token 5e55a5653c9634d01a99e085498355d7bb4f81ac")
+                .header("Authorization", "Token 7f55e7abe4ce713462fcdb39e95b88a6f3214b28")
                 .header("X-CSRFTOKEN", "bRrEBNED6jsY4iuc6He0YIXGyVxAH0BOBnYxsAR4Kt5s5P1MNIN9rsX7SUVm3AiK")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
@@ -130,14 +131,37 @@ public class MyFirstTelegramBot extends MultiSessionTelegramBot {
         return new ApiResponse(response.statusCode(), response.body());
     }
 
-    private String formatApiResponse(ApiResponse apiResponse) throws Exception {
-        if (apiResponse.statusCode == 201) {
-            JsonNode jsonNode = objectMapper.readTree(apiResponse.body);
-            String id = jsonNode.path("id").asText();
-            String answer = jsonNode.path("answer").asText();
-            return String.format("Solicitud procesada con éxito.\nID: %s\nRespuesta: %s", id, answer);
-        } else {
-            return "La API respondió con el código de estado: " + apiResponse.statusCode;
+    private String formatApiResponse(ApiResponse apiResponse) {
+        try {
+            if (apiResponse.statusCode == 201) {
+                // Convertir el cuerpo de la respuesta en un nodo JSON
+                JsonNode jsonNode = objectMapper.readTree(apiResponse.body);
+
+                // Obtener el campo 'answer', que es una cadena JSON con comillas simples
+                String answerString = jsonNode.path("answer").asText();
+
+                // Reemplazar comillas simples por comillas dobles para hacer que el JSON sea
+                // válido
+                answerString = answerString.replace("'", "\"");
+
+                // Reemplazar 'None' por 'null' para que el JSON sea válido
+                answerString = answerString.replace("None", "null");
+
+                System.out.println(answerString);
+
+                // Ahora deserializar la cadena modificada
+                JsonNode nestedAnswerNode = objectMapper.readTree(answerString);
+
+                // Obtener los valores del JSON anidado
+                String nestedAnswer = nestedAnswerNode.path("answer").asText();
+
+                // Formatear y retornar la respuesta final
+                return nestedAnswer;
+            } else {
+                return "La API respondió con el código de estado: " + apiResponse.statusCode;
+            }
+        } catch (Exception e) {
+            return "Error al procesar tu solicitud: " + e.getMessage();
         }
     }
 
@@ -165,7 +189,7 @@ public class MyFirstTelegramBot extends MultiSessionTelegramBot {
         // Agregar el botón para compartir el número de teléfono
         KeyboardButton button = new KeyboardButton();
         button.setText("Compartir mi número de teléfono");
-        button.setRequestContact(true);  // Aquí solicitamos el número de teléfono
+        button.setRequestContact(true); // Aquí solicitamos el número de teléfono
         row.add(button);
 
         keyboard.add(row);
@@ -205,5 +229,3 @@ public class MyFirstTelegramBot extends MultiSessionTelegramBot {
         telegramBotsApi.registerBot(new MyFirstTelegramBot());
     }
 }
-
-
